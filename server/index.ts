@@ -129,6 +129,13 @@ app.listen(PORT, async () => {
   startScheduler();
   console.log('[Server] Scheduler started (daily at 07:00)');
 
+  // Render 무료 플랜 슬립 방지: 14분마다 자기 자신에게 ping
+  const KEEP_ALIVE_MS = 14 * 60 * 1000;
+  setInterval(() => {
+    fetch(`http://localhost:${PORT}/api/status`).catch(() => {});
+  }, KEEP_ALIVE_MS);
+  console.log('[Server] Keep-alive enabled (every 14min)');
+
   const news = loadNews();
   if (news.length === 0) {
     console.log('[Server] No existing news found — running initial crawl...');
