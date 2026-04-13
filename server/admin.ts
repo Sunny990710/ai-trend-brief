@@ -253,6 +253,7 @@ async function addYouTubeVideo(url: string, industry: string, res: Response): Pr
     source: video.author?.name || 'YouTube',
     sourceUrl: `https://www.youtube.com/watch?v=${videoId}`,
     duration: formatDuration(video.seconds || 0),
+    impactLevel: '중간' as const,
     crawledAt: now.toISOString(),
   };
 
@@ -290,6 +291,7 @@ export async function forceAddArticle(req: AuthRequest, res: Response): Promise<
       keywords: [industry, 'AI'],
       source: new URL(url).hostname.replace('www.', ''),
       sourceUrl: url,
+      impactLevel: '중간' as const,
       crawledAt: now.toISOString(),
     };
 

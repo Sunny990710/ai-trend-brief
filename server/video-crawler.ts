@@ -167,6 +167,7 @@ async function crawlVideosForIndustry(industry: Industry): Promise<NewsItem[]> {
       source: video.author?.name || 'YouTube',
       sourceUrl: videoUrl,
       duration: formatDuration(video.seconds || 0),
+      impactLevel: '중간',
       crawledAt: new Date().toISOString(),
     });
 
