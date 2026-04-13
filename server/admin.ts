@@ -1,10 +1,10 @@
 import type { Response } from 'express';
 import type { AuthRequest } from './auth.js';
-import { loadUsers } from './auth.js';
 import { loadNews, saveNews, addNewsItems } from './store.js';
 import { scrapeArticleContent } from './crawler.js';
 import { processArticles } from './gemini.js';
 import type { Industry } from './crawl-config.js';
+import { supabase } from './supabase.js';
 import yts from 'yt-search';
 
 function isYouTubeUrl(url: string): boolean {
@@ -21,35 +21,24 @@ function formatDuration(seconds: number): string {
   const s = seconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const BOOKMARKS_PATH = path.join(__dirname, '..', 'data', 'bookmarks.json');
+export async function getAdminUsers(_req: AuthRequest, res: Response): Promise<void> {
+  const { data: users, error: usersErr } = await supabase.from('users').select('*');
+  if (usersErr || !users) {
+    res.status(500).json({ error: '사용자 조회 실패' });
+    return;
+  }
 
-interface Bookmark { userId: string; itemId: string; createdAt: string; }
-
-function loadBookmarks(): Bookmark[] {
-  try {
-    if (!fs.existsSync(BOOKMARKS_PATH)) return [];
-    return JSON.parse(fs.readFileSync(BOOKMARKS_PATH, 'utf-8'));
-  } catch { return []; }
-}
-
-export function getAdminUsers(_req: AuthRequest, res: Response): void {
-  const users = loadUsers();
-  const bookmarks = loadBookmarks();
+  const { data: bookmarks } = await supabase.from('bookmarks').select('*');
+  const allBookmarks = bookmarks || [];
   const news = loadNews();
-
   const newsMap = new Map(news.map(n => [n.id, n]));
 
   const result = users.map(u => {
-    const userBookmarks = bookmarks.filter(b => b.userId === u.id);
+    const userBookmarks = allBookmarks.filter(b => b.user_id === u.id);
     const bookmarkedItems = userBookmarks
       .map(b => {
-        const item = newsMap.get(b.itemId);
+        const item = newsMap.get(b.item_id);
         return item ? { id: item.id, title: item.title, industry: item.industry, type: item.type, date: item.date } : null;
       })
       .filter(Boolean);
@@ -64,8 +53,8 @@ export function getAdminUsers(_req: AuthRequest, res: Response): void {
       email: u.email,
       name: u.name,
       department: u.department,
-      isAdmin: u.isAdmin,
-      createdAt: u.createdAt,
+      isAdmin: u.is_admin,
+      createdAt: u.created_at,
       bookmarkCount: userBookmarks.length,
       industryInterest,
       bookmarkedItems,
@@ -75,24 +64,23 @@ export function getAdminUsers(_req: AuthRequest, res: Response): void {
   res.json({ users: result });
 }
 
-export function getAdminStats(_req: AuthRequest, res: Response): void {
-  const users = loadUsers();
-  const bookmarks = loadBookmarks();
+export async function getAdminStats(_req: AuthRequest, res: Response): Promise<void> {
+  const { data: users } = await supabase.from('users').select('*');
+  const { data: bookmarks } = await supabase.from('bookmarks').select('*');
+  const allUsers = users || [];
+  const allBookmarks = bookmarks || [];
   const news = loadNews();
-
   const newsMap = new Map(news.map(n => [n.id, n]));
 
-  // 부서별 사용자 수
   const deptCount: Record<string, number> = {};
-  users.forEach(u => {
+  allUsers.forEach(u => {
     const dept = u.department || '미지정';
     deptCount[dept] = (deptCount[dept] || 0) + 1;
   });
 
-  // 인기 기사 (북마크 많은 순)
   const articleBookmarkCount: Record<string, number> = {};
-  bookmarks.forEach(b => {
-    articleBookmarkCount[b.itemId] = (articleBookmarkCount[b.itemId] || 0) + 1;
+  allBookmarks.forEach(b => {
+    articleBookmarkCount[b.item_id] = (articleBookmarkCount[b.item_id] || 0) + 1;
   });
 
   const popularArticles = Object.entries(articleBookmarkCount)
@@ -105,16 +93,15 @@ export function getAdminStats(_req: AuthRequest, res: Response): void {
         : { id: itemId, title: '(삭제됨)', industry: '-', type: '-', bookmarkCount: count };
     });
 
-  // 산업군별 관심도 (전체 북마크 기준)
   const industryPopularity: Record<string, number> = {};
-  bookmarks.forEach(b => {
-    const item = newsMap.get(b.itemId);
+  allBookmarks.forEach(b => {
+    const item = newsMap.get(b.item_id);
     if (item) industryPopularity[item.industry] = (industryPopularity[item.industry] || 0) + 1;
   });
 
   res.json({
-    totalUsers: users.length,
-    totalBookmarks: bookmarks.length,
+    totalUsers: allUsers.length,
+    totalBookmarks: allBookmarks.length,
     totalArticles: news.filter(n => n.type === 'article').length,
     totalVideos: news.filter(n => n.type === 'video').length,
     departmentStats: deptCount,
@@ -302,7 +289,7 @@ export async function forceAddArticle(req: AuthRequest, res: Response): Promise<
   }
 }
 
-export function deleteAdminUser(req: AuthRequest, res: Response): void {
+export async function deleteAdminUser(req: AuthRequest, res: Response): Promise<void> {
   const { userId } = req.params;
 
   if (userId === req.user!.id) {
@@ -310,19 +297,18 @@ export function deleteAdminUser(req: AuthRequest, res: Response): void {
     return;
   }
 
-  const users = loadUsers();
-  const filtered = users.filter(u => u.id !== userId);
+  const { data, error } = await supabase
+    .from('users').delete().eq('id', userId).select();
 
-  if (filtered.length === users.length) {
-    res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+  if (error) {
+    res.status(500).json({ error: '사용자 삭제 실패' });
     return;
   }
 
-  const DATA_DIR = path.join(__dirname, '..', 'data');
-  fs.writeFileSync(path.join(DATA_DIR, 'users.json'), JSON.stringify(filtered, null, 2), 'utf-8');
-
-  const bookmarks = loadBookmarks().filter(b => b.userId !== userId);
-  fs.writeFileSync(BOOKMARKS_PATH, JSON.stringify(bookmarks, null, 2), 'utf-8');
+  if (!data || data.length === 0) {
+    res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    return;
+  }
 
   res.json({ message: '사용자가 삭제되었습니다.' });
 }

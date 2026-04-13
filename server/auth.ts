@@ -1,15 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
+import { supabase } from './supabase.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const USERS_PATH = path.join(DATA_DIR, 'users.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'ai-trend-news-secret-key-2024';
 const JWT_EXPIRES_IN = '7d';
 
@@ -22,8 +15,8 @@ export interface User {
   name: string;
   password: string;
   department: string;
-  isAdmin: boolean;
-  createdAt: string;
+  is_admin: boolean;
+  created_at: string;
 }
 
 export interface JwtPayload {
@@ -37,18 +30,13 @@ export interface AuthRequest extends Request {
   user?: JwtPayload;
 }
 
-export function loadUsers(): User[] {
-  try {
-    if (!fs.existsSync(USERS_PATH)) return [];
-    return JSON.parse(fs.readFileSync(USERS_PATH, 'utf-8'));
-  } catch {
+export async function loadUsers(): Promise<User[]> {
+  const { data, error } = await supabase.from('users').select('*');
+  if (error) {
+    console.error('[Auth] Failed to load users:', error.message);
     return [];
   }
-}
-
-function saveUsers(users: User[]): void {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf-8');
+  return data || [];
 }
 
 function generateId(): string {
@@ -56,15 +44,15 @@ function generateId(): string {
 }
 
 function makeToken(user: User): string {
-  const payload: JwtPayload = { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin };
+  const payload: JwtPayload = { id: user.id, email: user.email, name: user.name, isAdmin: user.is_admin };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 function safeUser(user: User) {
-  return { id: user.id, email: user.email, name: user.name, department: user.department, isAdmin: user.isAdmin };
+  return { id: user.id, email: user.email, name: user.name, department: user.department, isAdmin: user.is_admin };
 }
 
-export function signup(req: Request, res: Response): void {
+export async function signup(req: Request, res: Response): Promise<void> {
   const { email, name, password, department } = req.body;
 
   if (!email || !name || !password) {
@@ -76,8 +64,10 @@ export function signup(req: Request, res: Response): void {
     return;
   }
 
-  const users = loadUsers();
-  if (users.find(u => u.email === email)) {
+  const { data: existing } = await supabase
+    .from('users').select('id').eq('email', email).single();
+
+  if (existing) {
     res.status(409).json({ error: '이미 가입된 이메일입니다.' });
     return;
   }
@@ -88,17 +78,21 @@ export function signup(req: Request, res: Response): void {
     name,
     password: bcrypt.hashSync(password, 10),
     department: department || '',
-    isAdmin: ADMIN_EMAILS.includes(email.toLowerCase()),
-    createdAt: new Date().toISOString(),
+    is_admin: ADMIN_EMAILS.includes(email.toLowerCase()),
+    created_at: new Date().toISOString(),
   };
 
-  users.push(user);
-  saveUsers(users);
+  const { error } = await supabase.from('users').insert(user);
+  if (error) {
+    console.error('[Auth] Signup insert error:', error.message);
+    res.status(500).json({ error: '회원가입 처리 중 오류가 발생했습니다.' });
+    return;
+  }
 
   res.status(201).json({ token: makeToken(user), user: safeUser(user) });
 }
 
-export function login(req: Request, res: Response): void {
+export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -106,10 +100,10 @@ export function login(req: Request, res: Response): void {
     return;
   }
 
-  const users = loadUsers();
-  const user = users.find(u => u.email === email);
+  const { data: user, error } = await supabase
+    .from('users').select('*').eq('email', email).single();
 
-  if (!user || !bcrypt.compareSync(password, user.password)) {
+  if (error || !user || !bcrypt.compareSync(password, user.password)) {
     res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
     return;
   }
@@ -117,15 +111,21 @@ export function login(req: Request, res: Response): void {
   res.json({ token: makeToken(user), user: safeUser(user) });
 }
 
-export function getMe(req: AuthRequest, res: Response): void {
+export async function getMe(req: AuthRequest, res: Response): Promise<void> {
   if (!req.user) {
     res.status(401).json({ error: '인증이 필요합니다.' });
     return;
   }
-  const users = loadUsers();
-  const full = users.find(u => u.id === req.user!.id);
-  if (!full) { res.status(404).json({ error: '사용자를 찾을 수 없습니다.' }); return; }
-  res.json({ user: safeUser(full) });
+
+  const { data: user } = await supabase
+    .from('users').select('*').eq('id', req.user.id).single();
+
+  if (!user) {
+    res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    return;
+  }
+
+  res.json({ user: safeUser(user) });
 }
 
 export function authMiddleware(req: AuthRequest, _res: Response, next: NextFunction): void {

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -8,6 +8,11 @@ import { INDUSTRIES } from './crawl-config.js';
 import { signup, login, getMe, authMiddleware, requireAuth, requireAdmin } from './auth.js';
 import { getBookmarks, addBookmark, removeBookmark } from './bookmarks.js';
 import { getAdminUsers, getAdminStats, deleteAdminUser, getAdminArticles, toggleHideArticle, bulkHideArticles, deleteArticle, bulkDeleteArticles, addManualArticle, forceAddArticle } from './admin.js';
+
+type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+const asyncHandler = (fn: AsyncHandler) => (req: Request, res: Response, next: NextFunction) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
 
 dotenv.config();
 dotenv.config({ path: '.env.local' });
@@ -73,26 +78,26 @@ app.get('/api/industries', (_req, res) => {
 });
 
 // Auth routes
-app.post('/api/auth/signup', signup);
-app.post('/api/auth/login', login);
-app.get('/api/auth/me', getMe);
+app.post('/api/auth/signup', asyncHandler(signup));
+app.post('/api/auth/login', asyncHandler(login));
+app.get('/api/auth/me', asyncHandler(getMe));
 
 // Bookmark routes (require login)
-app.get('/api/bookmarks', requireAuth, getBookmarks);
-app.post('/api/bookmarks', requireAuth, addBookmark);
-app.delete('/api/bookmarks/:itemId', requireAuth, removeBookmark);
+app.get('/api/bookmarks', requireAuth, asyncHandler(getBookmarks));
+app.post('/api/bookmarks', requireAuth, asyncHandler(addBookmark));
+app.delete('/api/bookmarks/:itemId', requireAuth, asyncHandler(removeBookmark));
 
 // Admin routes (require admin)
-app.get('/api/admin/users', requireAdmin, getAdminUsers);
-app.get('/api/admin/stats', requireAdmin, getAdminStats);
-app.delete('/api/admin/users/:userId', requireAdmin, deleteAdminUser);
+app.get('/api/admin/users', requireAdmin, asyncHandler(getAdminUsers));
+app.get('/api/admin/stats', requireAdmin, asyncHandler(getAdminStats));
+app.delete('/api/admin/users/:userId', requireAdmin, asyncHandler(deleteAdminUser));
 app.get('/api/admin/articles', requireAdmin, getAdminArticles);
 app.patch('/api/admin/articles/:itemId', requireAdmin, toggleHideArticle);
 app.post('/api/admin/articles/bulk-hide', requireAdmin, bulkHideArticles);
 app.delete('/api/admin/articles/:itemId', requireAdmin, deleteArticle);
 app.post('/api/admin/articles/bulk-delete', requireAdmin, bulkDeleteArticles);
-app.post('/api/admin/articles/add', requireAdmin, addManualArticle);
-app.post('/api/admin/articles/force-add', requireAdmin, forceAddArticle);
+app.post('/api/admin/articles/add', requireAdmin, asyncHandler(addManualArticle));
+app.post('/api/admin/articles/force-add', requireAdmin, asyncHandler(forceAddArticle));
 
 app.post('/api/crawl', async (_req, res) => {
   if (isPipelineRunning()) {
