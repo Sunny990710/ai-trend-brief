@@ -79,6 +79,12 @@ function ImpactBadge({ level }: { level?: string }) {
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
+function proxyImg(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('https://')) return url;
+  return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 async function apiCall(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options.headers as Record<string, string> || {}) };
@@ -834,7 +840,7 @@ export default function App() {
                               className="group cursor-pointer flex flex-col md:flex-row gap-4 border border-gray-100 rounded-2xl p-4 hover:shadow-md transition-shadow bg-white"
                             >
                               <div className="w-full md:w-1/4 aspect-[4/3] md:aspect-auto md:h-32 rounded-xl overflow-hidden shrink-0">
-                                <img src={item.imageUrl} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                <img src={proxyImg(item.imageUrl)} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                               </div>
                               <div className="flex-1 min-w-0 overflow-hidden">
                                 <div className="flex items-center gap-2 mb-1">
@@ -866,7 +872,7 @@ export default function App() {
                               className="group cursor-pointer"
                             >
                               <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-gray-100">
-                                <img src={item.imageUrl} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                <img src={proxyImg(item.imageUrl)} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors">
                                   <PlayCircle className="w-9 h-9 text-white opacity-90" />
                                 </div>
@@ -908,7 +914,7 @@ export default function App() {
                 onClick={() => trackView(hero)}
               >
                 <img
-                  src={hero.imageUrl || `https://picsum.photos/seed/${hero.industry}/1600/600`}
+                  src={proxyImg(hero.imageUrl) || `https://picsum.photos/seed/${hero.industry}/1600/600`}
                   alt={hero.title}
                   referrerPolicy="no-referrer"
                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
@@ -1103,7 +1109,7 @@ export default function App() {
                   >
                     <div className="w-full md:w-1/3 lg:w-1/4 aspect-[4/3] md:aspect-auto md:h-40 rounded-xl overflow-hidden relative shrink-0">
                       <img 
-                        src={item.imageUrl} 
+                        src={proxyImg(item.imageUrl)} 
                         alt={item.title}
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -1293,7 +1299,7 @@ export default function App() {
                 >
                   <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-gray-100">
                     <img
-                      src={item.imageUrl}
+                      src={proxyImg(item.imageUrl)}
                       alt={item.title}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

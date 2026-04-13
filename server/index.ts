@@ -105,6 +105,24 @@ app.post('/api/crawl', async (_req, res) => {
   });
 });
 
+app.get('/api/image-proxy', async (req, res) => {
+  const url = req.query.url as string;
+  if (!url) { res.status(400).send('Missing url'); return; }
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': new URL(url).origin },
+    });
+    if (!response.ok) { res.status(response.status).send('Fetch failed'); return; }
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  } catch {
+    res.status(502).send('Image proxy error');
+  }
+});
+
 app.get('/api/status', (_req, res) => {
   const news = loadNews();
   res.json({
