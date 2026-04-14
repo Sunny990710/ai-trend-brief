@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { loadNews, incrementViewCount } from './store.js';
+import { loadNews, incrementViewCount, applyOverrides } from './store.js';
 import { runCrawlPipeline, startScheduler, isPipelineRunning } from './scheduler.js';
 import { INDUSTRIES } from './crawl-config.js';
 import { signup, login, getMe, authMiddleware, requireAuth, requireAdmin } from './auth.js';
@@ -92,10 +92,10 @@ app.get('/api/admin/users', requireAdmin, asyncHandler(getAdminUsers));
 app.get('/api/admin/stats', requireAdmin, asyncHandler(getAdminStats));
 app.delete('/api/admin/users/:userId', requireAdmin, asyncHandler(deleteAdminUser));
 app.get('/api/admin/articles', requireAdmin, getAdminArticles);
-app.patch('/api/admin/articles/:itemId', requireAdmin, toggleHideArticle);
-app.post('/api/admin/articles/bulk-hide', requireAdmin, bulkHideArticles);
-app.delete('/api/admin/articles/:itemId', requireAdmin, deleteArticle);
-app.post('/api/admin/articles/bulk-delete', requireAdmin, bulkDeleteArticles);
+app.patch('/api/admin/articles/:itemId', requireAdmin, asyncHandler(toggleHideArticle));
+app.post('/api/admin/articles/bulk-hide', requireAdmin, asyncHandler(bulkHideArticles));
+app.delete('/api/admin/articles/:itemId', requireAdmin, asyncHandler(deleteArticle));
+app.post('/api/admin/articles/bulk-delete', requireAdmin, asyncHandler(bulkDeleteArticles));
 app.post('/api/admin/articles/add', requireAdmin, asyncHandler(addManualArticle));
 app.post('/api/admin/articles/force-add', requireAdmin, asyncHandler(forceAddArticle));
 
@@ -158,6 +158,9 @@ app.listen(PORT, async () => {
     fetch(`http://localhost:${PORT}/api/status`).catch(() => {});
   }, KEEP_ALIVE_MS);
   console.log('[Server] Keep-alive enabled (every 14min)');
+
+  const overrideCount = await applyOverrides();
+  if (overrideCount > 0) console.log(`[Server] Applied ${overrideCount} article overrides from Supabase`);
 
   const news = loadNews();
   if (news.length === 0) {

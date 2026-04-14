@@ -123,7 +123,7 @@ export function getAdminArticles(req: AuthRequest, res: Response): void {
   res.json({ items, total: items.length });
 }
 
-export function toggleHideArticle(req: AuthRequest, res: Response): void {
+export async function toggleHideArticle(req: AuthRequest, res: Response): Promise<void> {
   const { itemId } = req.params;
   const { hidden, industry } = req.body;
   const news = loadNews();
@@ -135,6 +135,11 @@ export function toggleHideArticle(req: AuthRequest, res: Response): void {
 
   saveNews(news);
 
+  const override: Record<string, unknown> = { article_id: itemId, updated_at: new Date().toISOString() };
+  if (hidden !== undefined) override.hidden = !!hidden;
+  if (industry) override.industry = industry;
+  await supabase.from('article_overrides').upsert(override, { onConflict: 'article_id' });
+
   const messages: string[] = [];
   if (hidden !== undefined) messages.push(hidden ? '숨김 처리되었습니다.' : '복원되었습니다.');
   if (industry) messages.push(`산업군이 '${industry}'(으)로 변경되었습니다.`);
@@ -142,7 +147,7 @@ export function toggleHideArticle(req: AuthRequest, res: Response): void {
   res.json({ message: messages.join(' '), itemId, hidden: item.hidden, industry: item.industry });
 }
 
-export function bulkHideArticles(req: AuthRequest, res: Response): void {
+export async function bulkHideArticles(req: AuthRequest, res: Response): Promise<void> {
   const { itemIds, hidden } = req.body;
   if (!Array.isArray(itemIds)) { res.status(400).json({ error: 'itemIds 배열이 필요합니다.' }); return; }
   const news = loadNews();
@@ -152,20 +157,30 @@ export function bulkHideArticles(req: AuthRequest, res: Response): void {
     if (item) { item.hidden = !!hidden; count++; }
   }
   saveNews(news);
+
+  const overrides = itemIds.map(id => ({ article_id: id, hidden: !!hidden, updated_at: new Date().toISOString() }));
+  await supabase.from('article_overrides').upsert(overrides, { onConflict: 'article_id' });
+
   res.json({ message: `${count}개 항목이 ${hidden ? '숨김' : '복원'} 처리되었습니다.` });
 }
 
-export function deleteArticle(req: AuthRequest, res: Response): void {
+export async function deleteArticle(req: AuthRequest, res: Response): Promise<void> {
   const { itemId } = req.params;
   const news = loadNews();
   const idx = news.findIndex(n => n.id === itemId);
   if (idx === -1) { res.status(404).json({ error: '항목을 찾을 수 없습니다.' }); return; }
   const removed = news.splice(idx, 1)[0];
   saveNews(news);
+
+  await supabase.from('article_overrides').upsert(
+    { article_id: itemId, deleted: true, updated_at: new Date().toISOString() },
+    { onConflict: 'article_id' }
+  );
+
   res.json({ message: `"${removed.title}" 항목이 삭제되었습니다.` });
 }
 
-export function bulkDeleteArticles(req: AuthRequest, res: Response): void {
+export async function bulkDeleteArticles(req: AuthRequest, res: Response): Promise<void> {
   const { itemIds } = req.body;
   if (!Array.isArray(itemIds)) { res.status(400).json({ error: 'itemIds 배열이 필요합니다.' }); return; }
   const news = loadNews();
@@ -173,6 +188,10 @@ export function bulkDeleteArticles(req: AuthRequest, res: Response): void {
   const filtered = news.filter(n => !deleteSet.has(n.id));
   const count = news.length - filtered.length;
   saveNews(filtered);
+
+  const overrides = itemIds.map(id => ({ article_id: id, deleted: true, updated_at: new Date().toISOString() }));
+  await supabase.from('article_overrides').upsert(overrides, { onConflict: 'article_id' });
+
   res.json({ message: `${count}개 항목이 삭제되었습니다.` });
 }
 
