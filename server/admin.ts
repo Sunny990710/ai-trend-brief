@@ -125,13 +125,21 @@ export function getAdminArticles(req: AuthRequest, res: Response): void {
 
 export function toggleHideArticle(req: AuthRequest, res: Response): void {
   const { itemId } = req.params;
-  const { hidden } = req.body;
+  const { hidden, industry } = req.body;
   const news = loadNews();
   const item = news.find(n => n.id === itemId);
   if (!item) { res.status(404).json({ error: '기사를 찾을 수 없습니다.' }); return; }
-  item.hidden = !!hidden;
+
+  if (hidden !== undefined) item.hidden = !!hidden;
+  if (industry && typeof industry === 'string') item.industry = industry;
+
   saveNews(news);
-  res.json({ message: hidden ? '숨김 처리되었습니다.' : '복원되었습니다.', itemId, hidden: item.hidden });
+
+  const messages: string[] = [];
+  if (hidden !== undefined) messages.push(hidden ? '숨김 처리되었습니다.' : '복원되었습니다.');
+  if (industry) messages.push(`산업군이 '${industry}'(으)로 변경되었습니다.`);
+
+  res.json({ message: messages.join(' '), itemId, hidden: item.hidden, industry: item.industry });
 }
 
 export function bulkHideArticles(req: AuthRequest, res: Response): void {

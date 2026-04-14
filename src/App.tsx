@@ -233,6 +233,14 @@ export default function App() {
     } catch (err: any) { alert(err.message); }
   };
 
+  const handleChangeIndustry = async (itemId: string, industry: string) => {
+    try {
+      await apiCall(`/api/admin/articles/${itemId}`, { method: 'PATCH', body: JSON.stringify({ industry }) });
+      setAdminArticles(prev => prev.map(a => a.id === itemId ? { ...a, industry } : a));
+      fetchNews();
+    } catch (err: any) { alert(err.message); }
+  };
+
   const handleBulkHide = async (hidden: boolean) => {
     if (selectedItems.size === 0) return;
     try {
@@ -697,7 +705,12 @@ export default function App() {
                                       {a.type === 'video' ? '영상' : '기사'}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-2.5 text-xs">{a.industry}</td>
+                                  <td className="px-4 py-2.5 text-xs">
+                                    <select value={a.industry} onChange={e => handleChangeIndustry(a.id, e.target.value)}
+                                      className="bg-transparent border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-blue cursor-pointer">
+                                      {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+                                    </select>
+                                  </td>
                                   <td className="px-4 py-2.5 max-w-xs">
                                     <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-brand-blue truncate block text-xs" onClick={e => e.stopPropagation()}>{a.title}</a>
                                   </td>
