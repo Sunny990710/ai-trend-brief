@@ -57,7 +57,7 @@ app.get('/api/news', (req, res) => {
     });
   }
 
-  const maxItems = Math.min(parseInt((limit as string) || '100', 10), 500);
+  const maxItems = Math.min(parseInt((limit as string) || '500', 10), 500);
   items = items.slice(0, maxItems);
 
   res.json({ count: items.length, items });
