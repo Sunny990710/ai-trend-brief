@@ -990,7 +990,7 @@ export default function App() {
             const hero = heroArticles[heroIndex % heroArticles.length];
             return (
               <div
-                className="relative rounded-2xl overflow-hidden bg-gray-900 aspect-[21/9] md:aspect-[21/7] group cursor-pointer"
+                className="relative rounded-2xl overflow-hidden bg-gray-900 aspect-[4/3] sm:aspect-[21/9] md:aspect-[21/7] group cursor-pointer"
                 onClick={() => trackView(hero)}
               >
                 <img
@@ -1000,22 +1000,22 @@ export default function App() {
                   onError={onImgError}
                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-10">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="inline-block px-3 py-1 bg-brand-blue text-white text-xs font-bold rounded-full">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-5 sm:p-6 md:p-10">
+                  <div className="flex items-center gap-2 mb-2 sm:mb-4">
+                    <span className="inline-block px-2.5 py-0.5 sm:px-3 sm:py-1 bg-brand-blue text-white text-[11px] sm:text-xs font-bold rounded-full">
                       {hero.industry}
                     </span>
-                    <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs font-medium rounded-full">
+                    <span className="inline-block px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm text-white text-[11px] sm:text-xs font-medium rounded-full">
                       {hero.date}
                     </span>
                   </div>
-                  <h3 className="text-2xl md:text-4xl font-bold text-white mb-4 max-w-3xl leading-tight line-clamp-2">
+                  <h3 className="text-xl sm:text-2xl md:text-4xl font-bold text-white mb-2 sm:mb-4 max-w-3xl leading-snug line-clamp-2">
                     {hero.title}
                   </h3>
-                  <p className="text-gray-300 text-sm md:text-base max-w-2xl line-clamp-2 mb-3">
+                  <p className="hidden sm:block text-gray-300 text-sm md:text-base max-w-2xl line-clamp-2 mb-3">
                     {hero.summary}
                   </p>
-                  <div className="flex items-center text-gray-400 text-sm gap-4">
+                  <div className="flex items-center text-gray-400 text-xs sm:text-sm gap-4">
                     <span>{hero.source}</span>
                     <span>•</span>
                     <span>{heroIndex + 1} / {heroArticles.length}</span>
