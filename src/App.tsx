@@ -27,7 +27,6 @@ interface NewsItem {
 
 interface AuthUser {
   id: string;
-  email: string;
   name: string;
   department?: string;
   isAdmin?: boolean;
@@ -35,7 +34,6 @@ interface AuthUser {
 
 interface AdminUser {
   id: string;
-  email: string;
   name: string;
   department: string;
   isAdmin: boolean;
@@ -114,8 +112,7 @@ export default function App() {
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', department: '' });
+  const [authForm, setAuthForm] = useState({ name: '', department: '' });
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -154,15 +151,14 @@ export default function App() {
     setAuthError('');
     setAuthLoading(true);
     try {
-      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/signup';
-      const body = authMode === 'login'
-        ? { email: authForm.email, password: authForm.password }
-        : { email: authForm.email, password: authForm.password, name: authForm.name, department: authForm.department };
-      const data = await apiCall(endpoint, { method: 'POST', body: JSON.stringify(body) });
+      const data = await apiCall('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ name: authForm.name, department: authForm.department }),
+      });
       localStorage.setItem('token', data.token);
       setUser(data.user);
       setShowAuthModal(false);
-      setAuthForm({ email: '', password: '', name: '', department: '' });
+      setAuthForm({ name: '', department: '' });
       const bm = await apiCall('/api/bookmarks');
       setBookmarkedIds(new Set(bm.itemIds));
     } catch (err: any) {
@@ -465,7 +461,7 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <button onClick={() => { setAuthMode('login'); setAuthError(''); setShowAuthModal(true); }} className="hidden md:flex items-center justify-center px-4 py-2 rounded-full bg-brand-blue text-white text-sm font-bold hover:bg-[#0044CC] transition-colors shadow-sm">
+                <button onClick={() => { setAuthError(''); setShowAuthModal(true); }} className="hidden md:flex items-center justify-center px-4 py-2 rounded-full bg-brand-blue text-white text-sm font-bold hover:bg-[#0044CC] transition-colors shadow-sm">
                   로그인
                 </button>
               )}
@@ -524,7 +520,7 @@ export default function App() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-800">{user.name}</p>
-                  <p className="text-xs text-gray-400">{user.email}</p>
+                  <p className="text-xs text-gray-400">{user.department || '소속 미입력'}</p>
                 </div>
               </div>
               <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
@@ -533,7 +529,7 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <button onClick={() => { setAuthMode('login'); setAuthError(''); setShowAuthModal(true); setMobileMenuOpen(false); }}
+            <button onClick={() => { setAuthError(''); setShowAuthModal(true); setMobileMenuOpen(false); }}
               className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-brand-blue text-white text-sm font-bold hover:bg-[#0044CC] transition-colors shadow-sm">
               <User className="w-4 h-4" />로그인
             </button>
@@ -812,7 +808,6 @@ export default function App() {
                         <thead className="bg-gray-50 text-gray-500">
                           <tr>
                             <th className="text-left px-4 py-3 font-medium">이름</th>
-                            <th className="text-left px-4 py-3 font-medium">이메일</th>
                             <th className="text-left px-4 py-3 font-medium">소속</th>
                             <th className="text-center px-4 py-3 font-medium">북마크</th>
                             <th className="text-left px-4 py-3 font-medium">관심 산업</th>
@@ -830,7 +825,6 @@ export default function App() {
                                     {u.isAdmin && <Shield className="w-3.5 h-3.5 text-brand-blue" />}
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-gray-500">{u.email}</td>
                                 <td className="px-4 py-3">{u.department || <span className="text-gray-300">-</span>}</td>
                                 <td className="px-4 py-3 text-center">
                                   {u.bookmarkCount > 0 ? (
@@ -1468,57 +1462,30 @@ export default function App() {
                 AI<span className="text-brand-blue ml-[4px]">Trend</span>
               </div>
               <p className="text-sm text-gray-500">
-                {authMode === 'login' ? '로그인하여 북마크를 관리하세요' : '새 계정을 만들어보세요'}
+                이름과 소속을 입력하면 바로 이용할 수 있습니다
               </p>
             </div>
 
             <form onSubmit={handleAuth} className="space-y-4">
-              {authMode === 'signup' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
-                    <input
-                      type="text"
-                      value={authForm.name}
-                      onChange={e => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="이름을 입력하세요"
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-blue transition-colors"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">소속</label>
-                    <input
-                      type="text"
-                      value={authForm.department}
-                      onChange={e => setAuthForm(prev => ({ ...prev, department: e.target.value }))}
-                      placeholder="예: 마케팅팀"
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-blue transition-colors"
-                    />
-                  </div>
-                </>
-              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
                 <input
-                  type="email"
-                  value={authForm.email}
-                  onChange={e => setAuthForm(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="example@email.com"
+                  type="text"
+                  value={authForm.name}
+                  onChange={e => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="이름을 입력하세요"
                   className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-blue transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">소속</label>
                 <input
-                  type="password"
-                  value={authForm.password}
-                  onChange={e => setAuthForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder={authMode === 'signup' ? '6자 이상 입력하세요' : '비밀번호를 입력하세요'}
+                  type="text"
+                  value={authForm.department}
+                  onChange={e => setAuthForm(prev => ({ ...prev, department: e.target.value }))}
+                  placeholder="예: 마케팅팀"
                   className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-blue transition-colors"
-                  required
-                  minLength={authMode === 'signup' ? 6 : undefined}
                 />
               </div>
 
@@ -1531,21 +1498,9 @@ export default function App() {
                 disabled={authLoading}
                 className="w-full py-2.5 rounded-lg bg-brand-blue text-white font-bold text-sm hover:bg-[#0044CC] transition-colors disabled:opacity-50"
               >
-                {authLoading ? '처리중...' : (authMode === 'login' ? '로그인' : '회원가입')}
+                {authLoading ? '처리중...' : '로그인'}
               </button>
             </form>
-
-            <div className="mt-6 text-center text-sm text-gray-500">
-              {authMode === 'login' ? (
-                <p>아직 계정이 없으신가요?{' '}
-                  <button onClick={() => { setAuthMode('signup'); setAuthError(''); }} className="text-brand-blue font-medium hover:underline">회원가입</button>
-                </p>
-              ) : (
-                <p>이미 계정이 있으신가요?{' '}
-                  <button onClick={() => { setAuthMode('login'); setAuthError(''); }} className="text-brand-blue font-medium hover:underline">로그인</button>
-                </p>
-              )}
-            </div>
           </motion.div>
         </div>
       )}

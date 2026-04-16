@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import { loadNews, loadVisibleNews, incrementViewCount, applyOverrides } from './store.js';
 import { runCrawlPipeline, startScheduler, isPipelineRunning } from './scheduler.js';
 import { INDUSTRIES } from './crawl-config.js';
-import { signup, login, getMe, authMiddleware, requireAuth, requireAdmin } from './auth.js';
+import { login, getMe, authMiddleware, requireAuth, requireAdmin } from './auth.js';
 import { getBookmarks, addBookmark, removeBookmark } from './bookmarks.js';
 import { getAdminUsers, getAdminStats, deleteAdminUser, getAdminArticles, toggleHideArticle, bulkHideArticles, deleteArticle, bulkDeleteArticles, addManualArticle, forceAddArticle } from './admin.js';
 
@@ -78,7 +78,6 @@ app.get('/api/industries', (_req, res) => {
 });
 
 // Auth routes
-app.post('/api/auth/signup', asyncHandler(signup));
 app.post('/api/auth/login', asyncHandler(login));
 app.get('/api/auth/me', asyncHandler(getMe));
 

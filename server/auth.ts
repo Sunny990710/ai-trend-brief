@@ -1,13 +1,12 @@
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { supabase } from './supabase.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ai-trend-news-secret-key-2024';
-const JWT_EXPIRES_IN = '7d';
+const JWT_EXPIRES_IN = '30d';
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@aitrend.com')
-  .split(',').map(e => e.trim().toLowerCase());
+const ADMIN_NAMES = (process.env.ADMIN_NAMES || '관리자')
+  .split(',').map(n => n.trim().toLowerCase());
 
 export interface User {
   id: string;
@@ -21,8 +20,8 @@ export interface User {
 
 export interface JwtPayload {
   id: string;
-  email: string;
   name: string;
+  department: string;
   isAdmin: boolean;
 }
 
@@ -44,71 +43,50 @@ function generateId(): string {
 }
 
 function makeToken(user: User): string {
-  const payload: JwtPayload = { id: user.id, email: user.email, name: user.name, isAdmin: user.is_admin };
+  const payload: JwtPayload = { id: user.id, name: user.name, department: user.department, isAdmin: user.is_admin };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 function safeUser(user: User) {
-  return { id: user.id, email: user.email, name: user.name, department: user.department, isAdmin: user.is_admin };
+  return { id: user.id, name: user.name, department: user.department, isAdmin: user.is_admin };
 }
 
-export async function signup(req: Request, res: Response): Promise<void> {
-  const { email, name, password, department } = req.body;
+export async function login(req: Request, res: Response): Promise<void> {
+  const { name, department } = req.body;
 
-  if (!email || !name || !password) {
-    res.status(400).json({ error: '이메일, 이름, 비밀번호를 모두 입력해주세요.' });
+  if (!name) {
+    res.status(400).json({ error: '이름을 입력해주세요.' });
     return;
   }
-  if (password.length < 6) {
-    res.status(400).json({ error: '비밀번호는 6자 이상이어야 합니다.' });
-    return;
-  }
+
+  const dept = department || '';
 
   const { data: existing } = await supabase
-    .from('users').select('id').eq('email', email).single();
+    .from('users').select('*').eq('name', name).eq('department', dept).single();
 
   if (existing) {
-    res.status(409).json({ error: '이미 가입된 이메일입니다.' });
+    res.json({ token: makeToken(existing), user: safeUser(existing) });
     return;
   }
 
   const user: User = {
     id: generateId(),
-    email,
+    email: '',
     name,
-    password: bcrypt.hashSync(password, 10),
-    department: department || '',
-    is_admin: ADMIN_EMAILS.includes(email.toLowerCase()),
+    password: '',
+    department: dept,
+    is_admin: ADMIN_NAMES.includes(name.toLowerCase()),
     created_at: new Date().toISOString(),
   };
 
   const { error } = await supabase.from('users').insert(user);
   if (error) {
-    console.error('[Auth] Signup insert error:', error.message);
-    res.status(500).json({ error: '회원가입 처리 중 오류가 발생했습니다.' });
+    console.error('[Auth] Login/create error:', error.message);
+    res.status(500).json({ error: '로그인 처리 중 오류가 발생했습니다.' });
     return;
   }
 
   res.status(201).json({ token: makeToken(user), user: safeUser(user) });
-}
-
-export async function login(req: Request, res: Response): Promise<void> {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    res.status(400).json({ error: '이메일과 비밀번호를 입력해주세요.' });
-    return;
-  }
-
-  const { data: user, error } = await supabase
-    .from('users').select('*').eq('email', email).single();
-
-  if (error || !user || !bcrypt.compareSync(password, user.password)) {
-    res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
-    return;
-  }
-
-  res.json({ token: makeToken(user), user: safeUser(user) });
 }
 
 export async function getMe(req: AuthRequest, res: Response): Promise<void> {
