@@ -79,8 +79,16 @@ const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 function proxyImg(url: string): string {
   if (!url) return '';
-  if (url.startsWith('https://')) return url;
   return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
+const FALLBACK_IMG = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="none"><rect width="400" height="300" fill="#F3F4F6"/><text x="200" y="150" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif" font-size="14">이미지 없음</text></svg>'
+);
+
+function onImgError(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  if (img.src !== FALLBACK_IMG) img.src = FALLBACK_IMG;
 }
 
 async function apiCall(path: string, options: RequestInit = {}) {
@@ -912,7 +920,7 @@ export default function App() {
                               className="group cursor-pointer flex flex-col md:flex-row gap-4 border border-gray-100 rounded-2xl p-4 hover:shadow-md transition-shadow bg-white"
                             >
                               <div className="w-full md:w-1/4 aspect-[4/3] md:aspect-auto md:h-32 rounded-xl overflow-hidden shrink-0">
-                                <img src={proxyImg(item.imageUrl)} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                <img src={proxyImg(item.imageUrl)} alt={item.title} referrerPolicy="no-referrer" onError={onImgError} className="w-full h-full object-cover" />
                               </div>
                               <div className="flex-1 min-w-0 overflow-hidden">
                                 <div className="flex items-center gap-2 mb-1">
@@ -944,7 +952,7 @@ export default function App() {
                               className="group cursor-pointer"
                             >
                               <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-gray-100">
-                                <img src={proxyImg(item.imageUrl)} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                <img src={proxyImg(item.imageUrl)} alt={item.title} referrerPolicy="no-referrer" onError={onImgError} className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors">
                                   <PlayCircle className="w-9 h-9 text-white opacity-90" />
                                 </div>
@@ -989,6 +997,7 @@ export default function App() {
                   src={proxyImg(hero.imageUrl) || `https://picsum.photos/seed/${hero.industry}/1600/600`}
                   alt={hero.title}
                   referrerPolicy="no-referrer"
+                  onError={onImgError}
                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-10">
@@ -1184,6 +1193,7 @@ export default function App() {
                         src={proxyImg(item.imageUrl)} 
                         alt={item.title}
                         referrerPolicy="no-referrer"
+                        onError={onImgError}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute top-3 left-3 flex gap-2">
@@ -1389,6 +1399,7 @@ export default function App() {
                       src={proxyImg(item.imageUrl)}
                       alt={item.title}
                       referrerPolicy="no-referrer"
+                      onError={onImgError}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors">

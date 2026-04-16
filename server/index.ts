@@ -113,13 +113,21 @@ app.get('/api/image-proxy', async (req, res) => {
   const url = req.query.url as string;
   if (!url) { res.status(400).send('Missing url'); return; }
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': new URL(url).origin },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': new URL(url).origin,
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!response.ok) { res.status(response.status).send('Fetch failed'); return; }
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'public, max-age=604800');
     const buffer = Buffer.from(await response.arrayBuffer());
     res.send(buffer);
   } catch {

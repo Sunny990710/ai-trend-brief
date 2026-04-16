@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import cron, { type ScheduledTask } from 'node-cron';
 import { crawlAllSites } from './crawler.js';
 import { processArticles } from './gemini.js';
 import { crawlAllVideos } from './video-crawler.js';
@@ -46,7 +46,7 @@ export async function runCrawlPipeline(): Promise<{
   }
 }
 
-let scheduledTask: cron.ScheduledTask | null = null;
+let scheduledTask: ScheduledTask | null = null;
 
 export function startScheduler(cronExpression = '0 7 * * *'): void {
   if (scheduledTask) {
