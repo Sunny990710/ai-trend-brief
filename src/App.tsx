@@ -99,6 +99,7 @@ export default function App() {
   const [selectedIndustry, setSelectedIndustry] = useState<string>('전체');
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -468,12 +469,46 @@ export default function App() {
                   로그인
                 </button>
               )}
-              <button className="md:hidden p-2 text-gray-400 hover:text-brand-dark transition-colors">
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-400 hover:text-brand-dark transition-colors">
                 <Menu className="w-5 h-5" />
               </button>
             </div>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md px-4 py-3 space-y-2">
+            <button onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' }); }}
+              className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">산업별 트렌드</button>
+            <button onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); document.getElementById('videos-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+              className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">추천 영상</button>
+            {user && (
+              <button onClick={() => { setActiveTab('bookmarks'); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                <BookmarkCheck className="w-4 h-4" />북마크
+              </button>
+            )}
+            {user?.isAdmin && (
+              <button onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                <Shield className="w-4 h-4" />관리자
+              </button>
+            )}
+            <div className="border-t border-gray-100 pt-2 mt-2">
+              {user ? (
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-sm text-gray-700 flex items-center gap-2"><User className="w-4 h-4 text-brand-blue" />{user.name}</span>
+                  <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="text-sm text-red-500 flex items-center gap-1"><LogOut className="w-4 h-4" />로그아웃</button>
+                </div>
+              ) : (
+                <button onClick={() => { setAuthMode('login'); setAuthError(''); setShowAuthModal(true); setMobileMenuOpen(false); }}
+                  className="block w-full text-center px-4 py-2.5 rounded-full bg-brand-blue text-white text-sm font-bold hover:bg-[#0044CC] transition-colors">
+                  로그인
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
