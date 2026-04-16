@@ -61,11 +61,11 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   const dept = department || '';
 
-  const { data: existing } = await supabase
-    .from('users').select('*').eq('name', name).eq('department', dept).single();
+  const { data: rows } = await supabase
+    .from('users').select('*').eq('name', name).eq('department', dept).limit(1);
 
-  if (existing) {
-    res.json({ token: makeToken(existing), user: safeUser(existing) });
+  if (rows && rows.length > 0) {
+    res.json({ token: makeToken(rows[0]), user: safeUser(rows[0]) });
     return;
   }
 
