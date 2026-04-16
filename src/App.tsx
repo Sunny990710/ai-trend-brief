@@ -1199,19 +1199,34 @@ export default function App() {
                 PREV
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`w-9 h-9 rounded-md text-sm font-semibold transition-colors
-                    ${page === safePage
-                      ? 'bg-brand-blue text-white'
-                      : 'text-gray-500 hover:bg-gray-100 hover:text-brand-dark'}
-                  `}
-                >
-                  {page}
-                </button>
-              ))}
+              {(() => {
+                const PAGE_GROUP = 5;
+                const currentGroup = Math.floor((safePage - 1) / PAGE_GROUP);
+                const start = currentGroup * PAGE_GROUP + 1;
+                const end = Math.min(start + PAGE_GROUP - 1, totalPages);
+                const pages: React.ReactNode[] = [];
+
+                if (start > 1) {
+                  pages.push(<button key={1} onClick={() => handlePageChange(1)} className="w-9 h-9 rounded-md text-sm font-semibold text-gray-500 hover:bg-gray-100 hover:text-brand-dark transition-colors">1</button>);
+                  if (start > 2) pages.push(<span key="dots-start" className="px-1 text-gray-400">...</span>);
+                }
+
+                for (let p = start; p <= end; p++) {
+                  pages.push(
+                    <button key={p} onClick={() => handlePageChange(p)}
+                      className={`w-9 h-9 rounded-md text-sm font-semibold transition-colors ${p === safePage ? 'bg-brand-blue text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-brand-dark'}`}>
+                      {p}
+                    </button>
+                  );
+                }
+
+                if (end < totalPages) {
+                  if (end < totalPages - 1) pages.push(<span key="dots-end" className="px-1 text-gray-400">...</span>);
+                  pages.push(<button key={totalPages} onClick={() => handlePageChange(totalPages)} className="w-9 h-9 rounded-md text-sm font-semibold text-gray-500 hover:bg-gray-100 hover:text-brand-dark transition-colors">{totalPages}</button>);
+                }
+
+                return pages;
+              })()}
 
               <button
                 onClick={() => handlePageChange(Math.min(totalPages, safePage + 1))}
