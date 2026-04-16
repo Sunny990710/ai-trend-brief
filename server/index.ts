@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { loadNews, incrementViewCount, applyOverrides } from './store.js';
+import { loadNews, loadVisibleNews, incrementViewCount, applyOverrides } from './store.js';
 import { runCrawlPipeline, startScheduler, isPipelineRunning } from './scheduler.js';
 import { INDUSTRIES } from './crawl-config.js';
 import { signup, login, getMe, authMiddleware, requireAuth, requireAdmin } from './auth.js';
@@ -37,7 +37,7 @@ app.use(authMiddleware);
 
 app.get('/api/news', (req, res) => {
   const { industry, type, limit, sort } = req.query;
-  let items = loadNews().filter(item => !item.hidden);
+  let items = loadVisibleNews().filter(item => !item.hidden);
 
   if (industry && typeof industry === 'string') {
     const industries = industry.split(',');
@@ -129,7 +129,7 @@ app.get('/api/image-proxy', async (req, res) => {
 });
 
 app.get('/api/status', (_req, res) => {
-  const news = loadNews();
+  const news = loadVisibleNews();
   res.json({
     totalArticles: news.length,
     pipelineRunning: isPipelineRunning(),

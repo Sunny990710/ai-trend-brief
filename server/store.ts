@@ -24,6 +24,7 @@ export interface NewsItem {
   sourceUrl: string;
   duration?: string;
   hidden?: boolean;
+  deleted?: boolean;
   viewCount?: number;
   impactLevel?: '매우 높음' | '중간' | '낮음';
   crawledAt: string;
@@ -73,12 +74,20 @@ export function addNewsItems(newItems: NewsItem[]): number {
   return deduped.length;
 }
 
+interface ArticleOverride {
+  article_id: string;
+  deleted?: boolean;
+  hidden?: boolean | null;
+  industry?: string;
+  updated_at?: string;
+}
+
 export async function applyOverrides(): Promise<number> {
-  let overrides;
+  let overrides: ArticleOverride[];
   try {
     const result = await supabase.from('article_overrides').select('*');
     if (result.error || !result.data || result.data.length === 0) return 0;
-    overrides = result.data;
+    overrides = result.data as ArticleOverride[];
   } catch {
     console.warn('[Store] Supabase unavailable, skipping overrides');
     return 0;
@@ -87,24 +96,24 @@ export async function applyOverrides(): Promise<number> {
   const news = loadNews();
   const overrideMap = new Map(overrides.map(o => [o.article_id, o]));
 
-  const deletedIds = new Set(
-    overrides.filter(o => o.deleted).map(o => o.article_id)
-  );
-
-  const filtered = news.filter(item => !deletedIds.has(item.id));
-
-  let changed = deletedIds.size > 0;
-  for (const item of filtered) {
+  let changed = false;
+  for (const item of news) {
     const o = overrideMap.get(item.id);
-    if (!o || o.deleted) continue;
-    if (o.hidden !== null && !!item.hidden !== !!o.hidden) { item.hidden = o.hidden; changed = true; }
+    if (!o) continue;
+    if (o.deleted && !item.deleted) { item.deleted = true; changed = true; }
+    if (o.hidden !== null && o.hidden !== undefined && !!item.hidden !== !!o.hidden) { item.hidden = o.hidden; changed = true; }
     if (o.industry && item.industry !== o.industry) { item.industry = o.industry; changed = true; }
   }
 
   if (changed) {
-    saveNews(filtered);
-    console.log(`[Store] Applied ${overrides.length} overrides (${deletedIds.size} deleted, ${overrides.length - deletedIds.size} modified)`);
+    saveNews(news);
+    const deletedCount = overrides.filter(o => o.deleted).length;
+    console.log(`[Store] Applied ${overrides.length} overrides (${deletedCount} deleted, ${overrides.length - deletedCount} modified)`);
   }
 
   return overrides.length;
+}
+
+export function loadVisibleNews(): NewsItem[] {
+  return loadNews().filter(item => !item.deleted);
 }

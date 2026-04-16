@@ -112,11 +112,13 @@ export async function getAdminStats(_req: AuthRequest, res: Response): Promise<v
 
 export function getAdminArticles(req: AuthRequest, res: Response): void {
   const news = loadNews();
-  const { type, hidden } = req.query;
-  let items = news.map(n => ({
-    id: n.id, type: n.type, industry: n.industry, title: n.title,
-    source: n.source, date: n.date, hidden: !!n.hidden, sourceUrl: n.sourceUrl,
-  }));
+  const { type, hidden, showDeleted } = req.query;
+  let items = news
+    .filter(n => showDeleted === 'true' ? true : !n.deleted)
+    .map(n => ({
+      id: n.id, type: n.type, industry: n.industry, title: n.title,
+      source: n.source, date: n.date, hidden: !!n.hidden, deleted: !!n.deleted, sourceUrl: n.sourceUrl,
+    }));
   if (type && typeof type === 'string') items = items.filter(i => i.type === type);
   if (hidden === 'true') items = items.filter(i => i.hidden);
   if (hidden === 'false') items = items.filter(i => !i.hidden);
@@ -167,9 +169,9 @@ export async function bulkHideArticles(req: AuthRequest, res: Response): Promise
 export async function deleteArticle(req: AuthRequest, res: Response): Promise<void> {
   const { itemId } = req.params;
   const news = loadNews();
-  const idx = news.findIndex(n => n.id === itemId);
-  if (idx === -1) { res.status(404).json({ error: '항목을 찾을 수 없습니다.' }); return; }
-  const removed = news.splice(idx, 1)[0];
+  const item = news.find(n => n.id === itemId);
+  if (!item) { res.status(404).json({ error: '항목을 찾을 수 없습니다.' }); return; }
+  item.deleted = true;
   saveNews(news);
 
   await supabase.from('article_overrides').upsert(
@@ -177,17 +179,19 @@ export async function deleteArticle(req: AuthRequest, res: Response): Promise<vo
     { onConflict: 'article_id' }
   );
 
-  res.json({ message: `"${removed.title}" 항목이 삭제되었습니다.` });
+  res.json({ message: `"${item.title}" 항목이 삭제되었습니다.` });
 }
 
 export async function bulkDeleteArticles(req: AuthRequest, res: Response): Promise<void> {
   const { itemIds } = req.body;
   if (!Array.isArray(itemIds)) { res.status(400).json({ error: 'itemIds 배열이 필요합니다.' }); return; }
   const news = loadNews();
-  const deleteSet = new Set(itemIds);
-  const filtered = news.filter(n => !deleteSet.has(n.id));
-  const count = news.length - filtered.length;
-  saveNews(filtered);
+  const deleteSet = new Set(itemIds as string[]);
+  let count = 0;
+  for (const item of news) {
+    if (deleteSet.has(item.id)) { item.deleted = true; count++; }
+  }
+  saveNews(news);
 
   const overrides = itemIds.map(id => ({ article_id: id, deleted: true, updated_at: new Date().toISOString() }));
   await supabase.from('article_overrides').upsert(overrides, { onConflict: 'article_id' });
