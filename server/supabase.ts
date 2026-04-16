@@ -1,10 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+let _client: SupabaseClient | null = null;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('[Supabase] SUPABASE_URL and SUPABASE_KEY must be set in environment variables');
+export function getSupabase(): SupabaseClient {
+  if (!_client) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_KEY;
+    if (!url || !key) {
+      throw new Error('[Supabase] SUPABASE_URL and SUPABASE_KEY must be set');
+    }
+    _client = createClient(url, key);
+  }
+  return _client;
 }
 
-export const supabase = createClient(SUPABASE_URL || '', SUPABASE_KEY || '');
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabase() as any)[prop];
+  },
+});

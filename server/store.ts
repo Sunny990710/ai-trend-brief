@@ -74,8 +74,15 @@ export function addNewsItems(newItems: NewsItem[]): number {
 }
 
 export async function applyOverrides(): Promise<number> {
-  const { data: overrides, error } = await supabase.from('article_overrides').select('*');
-  if (error || !overrides || overrides.length === 0) return 0;
+  let overrides;
+  try {
+    const result = await supabase.from('article_overrides').select('*');
+    if (result.error || !result.data || result.data.length === 0) return 0;
+    overrides = result.data;
+  } catch {
+    console.warn('[Store] Supabase unavailable, skipping overrides');
+    return 0;
+  }
 
   const news = loadNews();
   const overrideMap = new Map(overrides.map(o => [o.article_id, o]));
