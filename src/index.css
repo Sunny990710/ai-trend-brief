@@ -12,3 +12,11 @@ body {
   background-color: #f9fafb;
   color: var(--color-brand-dark);
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

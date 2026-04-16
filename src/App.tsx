@@ -1095,11 +1095,11 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 md:gap-3">
+          <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
             <button
               onClick={() => handleIndustryChange('전체')}
               className={`
-                px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                 ${selectedIndustry === '전체'
                   ? 'bg-brand-blue text-white shadow-sm' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
@@ -1112,7 +1112,7 @@ export default function App() {
                 key={industry}
                 onClick={() => handleIndustryChange(industry)}
                 className={`
-                  px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                  shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                   ${selectedIndustry === industry
                     ? 'bg-brand-blue text-white shadow-sm' 
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
@@ -1355,10 +1355,10 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 md:gap-3 mb-6">
+          <div className="flex gap-2 md:gap-3 mb-6 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
             <button
               onClick={() => setVideoIndustry('전체')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                 ${videoIndustry === '전체' ? 'bg-brand-blue text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               전체
@@ -1367,7 +1367,7 @@ export default function App() {
               <button
                 key={`vid-${ind}`}
                 onClick={() => setVideoIndustry(ind)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                   ${videoIndustry === ind ? 'bg-brand-blue text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
                 {ind}
