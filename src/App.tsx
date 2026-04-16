@@ -476,40 +476,70 @@ export default function App() {
           </div>
         </div>
 
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md px-4 py-3 space-y-2">
-            <button onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' }); }}
-              className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">산업별 트렌드</button>
-            <button onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); document.getElementById('videos-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
-              className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">추천 영상</button>
-            {user && (
-              <button onClick={() => { setActiveTab('bookmarks'); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
-                <BookmarkCheck className="w-4 h-4" />북마크
-              </button>
-            )}
-            {user?.isAdmin && (
-              <button onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
-                <Shield className="w-4 h-4" />관리자
-              </button>
-            )}
-            <div className="border-t border-gray-100 pt-2 mt-2">
-              {user ? (
-                <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-sm text-gray-700 flex items-center gap-2"><User className="w-4 h-4 text-brand-blue" />{user.name}</span>
-                  <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="text-sm text-red-500 flex items-center gap-1"><LogOut className="w-4 h-4" />로그아웃</button>
-                </div>
-              ) : (
-                <button onClick={() => { setAuthMode('login'); setAuthError(''); setShowAuthModal(true); setMobileMenuOpen(false); }}
-                  className="block w-full text-center px-4 py-2.5 rounded-full bg-brand-blue text-white text-sm font-bold hover:bg-[#0044CC] transition-colors">
-                  로그인
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </header>
+
+      {/* Mobile Side Panel */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[100]" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 transition-opacity" />
+        </div>
+      )}
+      <div className={`md:hidden fixed top-0 right-0 z-[101] h-full w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <span className="text-lg font-bold text-brand-dark">메뉴</span>
+          <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="px-4 py-4 space-y-1">
+          <button onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' }); }}
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            <TrendingUp className="w-4 h-4 text-brand-blue" />산업별 트렌드
+          </button>
+          <button onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); document.getElementById('videos-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            <PlayCircle className="w-4 h-4 text-red-500" />추천 영상
+          </button>
+          {user && (
+            <button onClick={() => { setActiveTab('bookmarks'); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+              <BookmarkCheck className="w-4 h-4 text-yellow-500" />북마크
+            </button>
+          )}
+          {user?.isAdmin && (
+            <button onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+              <Shield className="w-4 h-4 text-purple-500" />관리자
+            </button>
+          )}
+        </nav>
+
+        <div className="absolute bottom-0 left-0 right-0 px-4 py-5 border-t border-gray-100 bg-gray-50/50">
+          {user ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5 px-1">
+                <div className="w-8 h-8 rounded-full bg-brand-blue/10 flex items-center justify-center">
+                  <User className="w-4 h-4 text-brand-blue" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{user.name}</p>
+                  <p className="text-xs text-gray-400">{user.email}</p>
+                </div>
+              </div>
+              <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm text-red-500 bg-red-50 hover:bg-red-100 transition-colors">
+                <LogOut className="w-4 h-4" />로그아웃
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => { setAuthMode('login'); setAuthError(''); setShowAuthModal(true); setMobileMenuOpen(false); }}
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-brand-blue text-white text-sm font-bold hover:bg-[#0044CC] transition-colors shadow-sm">
+              <User className="w-4 h-4" />로그인
+            </button>
+          )}
+        </div>
+      </div>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
