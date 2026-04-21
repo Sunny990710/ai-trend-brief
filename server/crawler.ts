@@ -90,13 +90,28 @@ function isSimilarTitle(a: string, b: string): boolean {
   return similarity >= 0.55;
 }
 
-function buildNaverSearchUrl(query: string, start: number): string {
+export interface CrawlDateRange {
+  /** YYYY.MM.DD (예: 2026.04.20) */
+  start: string;
+  end: string;
+}
+
+function buildNaverSearchUrl(query: string, start: number, dateRange?: CrawlDateRange): string {
   const q = encodeURIComponent(query);
+  if (dateRange) {
+    const ds = encodeURIComponent(dateRange.start);
+    const de = encodeURIComponent(dateRange.end);
+    return `https://search.naver.com/search.naver?where=news&query=${q}&sort=1&pd=3&ds=${ds}&de=${de}&start=${start}`;
+  }
   return `https://search.naver.com/search.naver?where=news&query=${q}&sort=1&pd=4&start=${start}`;
 }
 
-async function fetchNaverNewsPage(query: string, start: number): Promise<NaverNewsItem[]> {
-  const url = buildNaverSearchUrl(query, start);
+async function fetchNaverNewsPage(
+  query: string,
+  start: number,
+  dateRange?: CrawlDateRange,
+): Promise<NaverNewsItem[]> {
+  const url = buildNaverSearchUrl(query, start, dateRange);
   try {
     const res = await axios.get(url, {
       headers: {
@@ -302,6 +317,24 @@ export async function scrapeArticleContent(url: string): Promise<{
   }
 }
 
+function parseDotDateKey(s: string): number | null {
+  const m = s.match(/^(\d{4})\.(\d{2})\.(\d{2})/);
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10) - 1;
+  const d = parseInt(m[3], 10);
+  const t = new Date(y, mo, d).getTime();
+  return isNaN(t) ? null : t;
+}
+
+function isArticleDateInRange(normalizedDate: string, range: CrawlDateRange): boolean {
+  const t = parseDotDateKey(normalizedDate);
+  const t0 = parseDotDateKey(range.start);
+  const t1 = parseDotDateKey(range.end);
+  if (t === null || t0 === null || t1 === null) return false;
+  return t >= t0 && t <= t1;
+}
+
 function normalizeDate(raw: string): string {
   if (!raw) {
     const now = new Date();
@@ -321,9 +354,14 @@ function normalizeDate(raw: string): string {
   return `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
 }
 
-async function crawlIndustry(industry: Industry): Promise<RawArticle[]> {
+export interface CrawlAllOptions {
+  dateRange?: CrawlDateRange;
+}
+
+async function crawlIndustry(industry: Industry, options?: CrawlAllOptions): Promise<RawArticle[]> {
+  const dateRange = options?.dateRange;
   const queries = INDUSTRY_SEARCH_QUERIES[industry];
-  console.log(`[Crawler] 🔍 [${industry}] 검색어: ${queries.join(', ')}`);
+  console.log(`[Crawler] 🔍 [${industry}] 검색어: ${queries.join(', ')}${dateRange ? ` (${dateRange.start}~${dateRange.end})` : ''}`);
 
   const existingUrls = getExistingUrls();
   const existingTitles = getExistingTitles();
@@ -333,7 +371,7 @@ async function crawlIndustry(industry: Industry): Promise<RawArticle[]> {
   for (const query of queries) {
     for (let page = 0; page < NAVER_SEARCH_PAGES; page++) {
       const start = page * 10 + 1;
-      const items = await fetchNaverNewsPage(query, start);
+      const items = await fetchNaverNewsPage(query, start, dateRange);
       for (const item of items) {
         if (!seenUrls.has(item.url)) {
           seenUrls.add(item.url);
@@ -369,6 +407,18 @@ async function crawlIndustry(industry: Industry): Promise<RawArticle[]> {
       continue;
     }
 
+    if (dateRange) {
+      if (!scraped.date?.trim()) {
+        console.log(`[Crawler] ⏭️ [${industry}] 기사 날짜 없음, 기간 필터로 제외: ${item.title.slice(0, 40)}...`);
+        continue;
+      }
+      const norm = normalizeDate(scraped.date);
+      if (!isArticleDateInRange(norm, dateRange)) {
+        console.log(`[Crawler] ⏭️ [${industry}] 기간 외(${norm}): ${item.title.slice(0, 40)}...`);
+        continue;
+      }
+    }
+
     const finalTitle = scraped.title || item.title;
 
     const isDupFinalOfExisting = existingTitles.some(t => isSimilarTitle(t, finalTitle));
@@ -398,12 +448,12 @@ async function crawlIndustry(industry: Industry): Promise<RawArticle[]> {
   return articles;
 }
 
-export async function crawlAllSites(): Promise<RawArticle[]> {
+export async function crawlAllSites(options?: CrawlAllOptions): Promise<RawArticle[]> {
   const allArticles: RawArticle[] = [];
 
   for (const industry of INDUSTRIES) {
     try {
-      const articles = await crawlIndustry(industry);
+      const articles = await crawlIndustry(industry, options);
       for (const article of articles) {
         const dupAcrossIndustries = allArticles.some(a => isSimilarTitle(a.title, article.title));
         if (dupAcrossIndustries) {

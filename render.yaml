@@ -1,0 +1,14 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# 저장소 연결 후 Dashboard에서 New → Blueprint 로 이 파일 지정 가능
+services:
+  - type: web
+    name: ai-trend-news
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # 대시보드에서 직접 설정: GEMINI_API_KEY, JWT_SECRET, SUPABASE_* 등
