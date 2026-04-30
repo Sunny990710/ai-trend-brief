@@ -1,12 +1,12 @@
 /**
- * 지정 기간(기본: 2026.04.20~22) 네이버 뉴스 기사 크롤 → Gemini 처리 → news.json 추가
+ * 지정 기간(기본: 2026.04.30) 네이버 뉴스 기사 크롤 → Gemini 처리 → news.json 추가
  * 실행: npx tsx server/crawl-range.ts
  */
 import { crawlAllSites } from './crawler.js';
 import { processArticles } from './gemini.js';
 import { addNewsItems } from './store.js';
 
-const RANGE = { start: '2026.04.20', end: '2026.04.22' };
+const RANGE = { start: '2026.04.30', end: '2026.04.30' };
 
 async function main(): Promise<void> {
   console.log(`[CrawlRange] 기간: ${RANGE.start} ~ ${RANGE.end}`);
