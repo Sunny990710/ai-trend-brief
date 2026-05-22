@@ -11,6 +11,7 @@
     "server": "tsx server/index.ts",
     "crawl": "tsx -e \"import('./server/scheduler.js').then(m => m.runCrawlPipeline().then(r => { console.log(r); process.exit(); }))\"",
     "crawl:range": "tsx server/crawl-range.ts",
+    "crawl:hybrid": "tsx server/notionSink.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },

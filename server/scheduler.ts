@@ -3,6 +3,7 @@ import { crawlAllSites } from './crawler.js';
 import { processArticles } from './gemini.js';
 import { crawlAllVideos } from './video-crawler.js';
 import { addNewsItems } from './store.js';
+import { runHybridPipeline } from './notionSink.js';
 
 let isRunning = false;
 
@@ -72,4 +73,84 @@ export function stopScheduler(): void {
 
 export function isPipelineRunning(): boolean {
   return isRunning;
+}
+
+// ---------- 주간 Notion 하이브리드 크롤 (기본: 매주 금요일 15:00 KST, 최근 7일) ----------
+let isHybridRunning = false;
+let hybridScheduledTask: ScheduledTask | null = null;
+
+export interface HybridPipelineResult {
+  collected: number;
+  pushed: number;
+  skipped: number;
+  failed: number;
+  error?: string;
+}
+
+export async function runHybridScheduledPipeline(): Promise<HybridPipelineResult> {
+  if (isHybridRunning) {
+    return { collected: 0, pushed: 0, skipped: 0, failed: 0, error: 'Hybrid pipeline already running' };
+  }
+  if (!process.env.NOTION_TOKEN) {
+    console.warn('[HybridScheduler] NOTION_TOKEN 없음 — 스킵');
+    return { collected: 0, pushed: 0, skipped: 0, failed: 0, error: 'NOTION_TOKEN not set' };
+  }
+
+  isHybridRunning = true;
+  console.log(`[HybridScheduler] Weekly Notion crawl started at ${new Date().toISOString()}`);
+
+  try {
+    const result = await runHybridPipeline({ sinceDays: 7 });
+    return {
+      collected: result.total,
+      pushed: result.pushed,
+      skipped: result.skipped,
+      failed: result.failed,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[HybridScheduler] Pipeline error: ${message}`);
+    return { collected: 0, pushed: 0, skipped: 0, failed: 0, error: message };
+  } finally {
+    isHybridRunning = false;
+    console.log(`[HybridScheduler] Finished at ${new Date().toISOString()}`);
+  }
+}
+
+/** 매주 금요일 15:00 (Asia/Seoul). HYBRID_CRON / HYBRID_CRON_TZ 로 변경 가능 */
+export function startHybridScheduler(
+  cronExpression = process.env.HYBRID_CRON ?? '0 15 * * 5',
+  timezone = process.env.HYBRID_CRON_TZ ?? 'Asia/Seoul',
+): void {
+  if (process.env.HYBRID_SCHEDULE_ENABLED === 'false') {
+    console.log('[HybridScheduler] Disabled (HYBRID_SCHEDULE_ENABLED=false)');
+    return;
+  }
+
+  if (hybridScheduledTask) {
+    hybridScheduledTask.stop();
+  }
+
+  hybridScheduledTask = cron.schedule(
+    cronExpression,
+    () => {
+      console.log('[HybridScheduler] Cron triggered');
+      void runHybridScheduledPipeline();
+    },
+    { timezone },
+  );
+
+  console.log(`[HybridScheduler] Scheduled: ${cronExpression} (${timezone}) — 최근 7일 기사 → Notion`);
+}
+
+export function stopHybridScheduler(): void {
+  if (hybridScheduledTask) {
+    hybridScheduledTask.stop();
+    hybridScheduledTask = null;
+    console.log('[HybridScheduler] Stopped');
+  }
+}
+
+export function isHybridPipelineRunning(): boolean {
+  return isHybridRunning;
 }

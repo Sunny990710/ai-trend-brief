@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { loadNews, loadVisibleNews, incrementViewCount, applyOverrides } from './store.js';
-import { runCrawlPipeline, startScheduler, isPipelineRunning } from './scheduler.js';
+import { runCrawlPipeline, startScheduler, startHybridScheduler, isPipelineRunning } from './scheduler.js';
 import { INDUSTRIES } from './crawl-config.js';
 import { login, getMe, authMiddleware, requireAuth, requireAdmin } from './auth.js';
 import { getBookmarks, addBookmark, removeBookmark } from './bookmarks.js';
@@ -156,8 +156,11 @@ app.get('*', (_req, res) => {
 
 app.listen(PORT, async () => {
   console.log(`[Server] API running at http://localhost:${PORT}`);
-  startScheduler();
-  console.log('[Server] Scheduler started (daily at 07:00)');
+  startScheduler(process.env.CRAWL_CRON ?? '0 7 * * *');
+  console.log('[Server] News crawl scheduler started');
+
+  startHybridScheduler();
+  console.log('[Server] Notion hybrid scheduler started (Fri 15:00 KST, last 7 days)');
 
   // Render 무료 플랜 슬립 방지: 14분마다 자기 자신에게 ping
   const KEEP_ALIVE_MS = 14 * 60 * 1000;

@@ -8,3 +8,4 @@ coverage/
 !.env.example
 data/users.json
 data/bookmarks.json
+data/pushed.db
