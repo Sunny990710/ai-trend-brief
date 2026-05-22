@@ -117,9 +117,9 @@ export async function runHybridScheduledPipeline(): Promise<HybridPipelineResult
   }
 }
 
-/** 매주 금요일 15:00 (Asia/Seoul). HYBRID_CRON / HYBRID_CRON_TZ 로 변경 가능 */
+/** 매주 금요일 13:20 (Asia/Seoul). HYBRID_CRON / HYBRID_CRON_TZ 로 변경 가능 */
 export function startHybridScheduler(
-  cronExpression = process.env.HYBRID_CRON ?? '0 15 * * 5',
+  cronExpression = process.env.HYBRID_CRON ?? '20 13 * * 5',
   timezone = process.env.HYBRID_CRON_TZ ?? 'Asia/Seoul',
 ): void {
   if (process.env.HYBRID_SCHEDULE_ENABLED === 'false') {
