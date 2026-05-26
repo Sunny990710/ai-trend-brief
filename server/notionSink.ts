@@ -53,6 +53,18 @@ async function getSchema(): Promise<Record<string, NotionPropType>> {
   return out;
 }
 
+// impact → ★★★ / ★★☆ / ★☆☆ (forExec이면 한 단계 상향, 최대 3)
+function impactToScore(impact: TrendItem['impact'], forExec: boolean): number {
+  let n = impact === 'high' ? 3 : impact === 'medium' ? 2 : 1;
+  if (forExec && n < 3) n += 1;
+  return n;
+}
+
+function impactToStars(impact: TrendItem['impact'], forExec: boolean): string {
+  const n = impactToScore(impact, forExec);
+  return '★'.repeat(n) + '☆'.repeat(3 - n);
+}
+
 // ---------- 속성 페이로드 빌더 (실제 타입 기준) ----------
 function valueForType(type: NotionPropType, text: string) {
   const t = text.slice(0, 1900);
@@ -83,6 +95,23 @@ function buildProperties(schema: Record<string, NotionPropType>, item: TrendItem
 
   set('카테고리', item.categoryLabel);                      // AI 기술 카테고리
   set('임팩트', item.impact);                                // high · medium · low
+
+  // 중요도(★): DB에 rich_text/select/number 속성이 있으면 자동 매핑
+  const stars = impactToStars(item.impact, item.forExec);
+  const importanceNames = ['중요도(★)', '중요도', 'Importance'];
+  const importanceProp =
+    importanceNames.find((n) => schema[n]) ??
+    Object.keys(schema).find((k) => k.includes('중요'));
+  if (importanceProp) {
+    const impType = schema[importanceProp];
+    if (impType === 'number') {
+      props[importanceProp] = { number: impactToScore(item.impact, item.forExec) };
+    } else {
+      const v = valueForType(impType, stars);
+      if (v) props[importanceProp] = v;
+    }
+  }
+
   set('지역', item.region === 'KR' ? '국내' : '해외');
   set('출처', item.sourceName);
   set('요약', item.summary);
@@ -101,10 +130,16 @@ function buildProperties(schema: Record<string, NotionPropType>, item: TrendItem
 
 // 페이지 본문: 요약 + 출처 링크 (카드뉴스 스킬의 'content 핵심요약' 추출 대상)
 function buildChildren(item: TrendItem) {
+  const stars = impactToStars(item.impact, item.forExec);
   return [
     {
       object: 'block', type: 'paragraph',
-      paragraph: { rich_text: [{ type: 'text', text: { content: item.summary } }] },
+      paragraph: {
+        rich_text: [
+          { type: 'text', text: { content: `${stars} ` }, annotations: { bold: true } },
+          { type: 'text', text: { content: item.summary } },
+        ],
+      },
     },
     {
       object: 'block', type: 'paragraph',
