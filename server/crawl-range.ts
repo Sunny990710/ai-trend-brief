@@ -6,7 +6,7 @@ import { crawlAllSites } from './crawler.js';
 import { processArticles } from './gemini.js';
 import { addNewsItems } from './store.js';
 
-const RANGE = { start: '2026.06.01', end: '2026.06.03' };
+const RANGE = { start: '2026.06.04', end: '2026.06.07' };
 
 async function main(): Promise<void> {
   console.log(`[CrawlRange] 기간: ${RANGE.start} ~ ${RANGE.end}`);
